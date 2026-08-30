@@ -7,6 +7,10 @@ except ImportError:
     class BaseSettings:
         pass
 
+IS_VERCEL_OR_SERVERLESS = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
+DEFAULT_STORAGE_ROOT = "/tmp/storage" if IS_VERCEL_OR_SERVERLESS else "./storage"
+DEFAULT_DB_URL = "sqlite:////tmp/docshield.db" if IS_VERCEL_OR_SERVERLESS else "sqlite:///./docshield.db"
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "DocShield AI"
     VERSION: str = "1.0.0"
@@ -17,14 +21,14 @@ class Settings(BaseSettings):
     DEMO_MODE: bool = os.getenv("DEMO_MODE", "true").lower() == "true"
     
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./docshield.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", DEFAULT_DB_URL)
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
     SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
     
     # Storage & Retention
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./storage/uploads")
-    REPORT_DIR: str = os.getenv("REPORT_DIR", "./storage/reports")
-    HEATMAP_DIR: str = os.getenv("HEATMAP_DIR", "./storage/heatmaps")
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", f"{DEFAULT_STORAGE_ROOT}/uploads")
+    REPORT_DIR: str = os.getenv("REPORT_DIR", f"{DEFAULT_STORAGE_ROOT}/reports")
+    HEATMAP_DIR: str = os.getenv("HEATMAP_DIR", f"{DEFAULT_STORAGE_ROOT}/heatmaps")
     DOCUMENT_RETENTION_HOURS: int = int(os.getenv("DOCUMENT_RETENTION_HOURS", "24"))
     
     # Maximum Upload Size (15 MB)
@@ -51,6 +55,9 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-os.makedirs(settings.REPORT_DIR, exist_ok=True)
-os.makedirs(settings.HEATMAP_DIR, exist_ok=True)
+try:
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    os.makedirs(settings.REPORT_DIR, exist_ok=True)
+    os.makedirs(settings.HEATMAP_DIR, exist_ok=True)
+except Exception:
+    pass
