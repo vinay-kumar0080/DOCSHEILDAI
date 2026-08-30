@@ -24,14 +24,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application source code
 COPY backend/app ./app
-COPY backend/storage ./storage
+
+# Create runtime storage directories
+RUN mkdir -p \
+    ./storage/uploads \
+    ./storage/reports \
+    ./storage/heatmaps
 
 # Expose FastAPI port
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/api/v1/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/health || exit 1
 
 # Start Uvicorn server
 CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
