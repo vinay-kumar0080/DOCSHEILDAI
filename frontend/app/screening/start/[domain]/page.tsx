@@ -115,26 +115,38 @@ export default function DomainPersonScreeningPage() {
     setErrorMsg(null);
     setCapturedBlobUrl(null);
     setTempCapturedFile(null);
-    stopCamera();
+    setIsCameraActive(true);
 
     if (!navigator?.mediaDevices?.getUserMedia) {
-      setCameraError('Camera API is not supported in this browser. Please upload from your device.');
+      setCameraError('Camera is not available in this browser. Please upload from your device.');
       return;
     }
 
     try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: 'environment' },
         audio: false
       });
       streamRef.current = stream;
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        await videoRef.current.play().catch(() => {});
       }
-      setIsCameraActive(true);
     } catch (err: any) {
-      setCameraError('Camera access denied or unavailable: ' + (err.message || 'Error'));
+      console.error('Camera access error:', err);
+      let msg = 'Camera access is required to capture this document.';
+      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        msg = 'No camera device was detected on your system.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        msg = 'Camera is currently in use by another application.';
+      }
+      setCameraError(msg);
     }
   };
 
@@ -143,28 +155,34 @@ export default function DomainPersonScreeningPage() {
     if (!videoRef.current) return;
     const video = videoRef.current;
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
+    const width = video.videoWidth > 0 ? video.videoWidth : 1280;
+    const height = video.videoHeight > 0 ? video.videoHeight : 720;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, width, height);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
     setCapturedBlobUrl(dataUrl);
 
     canvas.toBlob((blob) => {
       if (blob) {
-        const file = new File([blob], `${selectedDocType}_captured.jpg`, { type: 'image/jpeg' });
+        const file = new File([blob], `${selectedDocType}_capture.jpg`, { type: 'image/jpeg' });
         setTempCapturedFile(file);
         setImageMeta({
-          width: canvas.width,
-          height: canvas.height,
-          quality: canvas.width >= 1280 ? 'High Definition (Optimal)' : 'Acceptable'
+          width,
+          height,
+          quality: width >= 1280 ? 'High Definition (Optimal)' : 'Acceptable'
         });
       }
     }, 'image/jpeg', 0.95);
 
-    stopCamera();
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
   };
 
   // File upload from device
@@ -593,10 +611,32 @@ export default function DomainPersonScreeningPage() {
 
             {/* Video Canvas or Review Captured Image */}
             <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black border border-slate-800 flex items-center justify-center">
-              {isCameraActive && (
+              {cameraError ? (
+                <div className="p-6 text-center space-y-3 max-w-sm">
+                  <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
+                  <p className="text-xs text-slate-300 font-mono leading-relaxed">{cameraError}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopCamera();
+                      setCapturedBlobUrl(null);
+                      fileInputRef.current?.click();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold"
+                  >
+                    Upload From Device
+                  </button>
+                </div>
+              ) : isCameraActive ? (
                 <>
                   <video
-                    ref={videoRef}
+                    ref={(el) => {
+                      videoRef.current = el;
+                      if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                        el.srcObject = streamRef.current;
+                        el.play().catch(() => {});
+                      }
+                    }}
                     autoPlay
                     playsInline
                     muted
@@ -617,15 +657,13 @@ export default function DomainPersonScreeningPage() {
                     </div>
                   </div>
                 </>
-              )}
-
-              {capturedBlobUrl && !isCameraActive && (
+              ) : capturedBlobUrl ? (
                 <img
                   src={capturedBlobUrl}
                   alt="Captured Document"
                   className="w-full h-full object-contain"
                 />
-              )}
+              ) : null}
             </div>
 
             {/* Quality & Metadata details */}

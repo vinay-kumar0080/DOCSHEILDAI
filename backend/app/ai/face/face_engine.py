@@ -96,6 +96,15 @@ class FaceEngine:
         except Exception as e:
             return 0, None, None, None
 
+    def detect_faces(self, image_path: str) -> Dict[str, Any]:
+        count, bbox, crop, _ = self.detect_face(image_path)
+        return {
+            "face_detected": count > 0,
+            "face_count": count,
+            "bounding_box": bbox,
+            "status": "DETECTED" if count > 0 else "NO_FACE"
+        }
+
     def compare_faces(self, doc_image_path: str, live_image_path: Optional[str] = None) -> Dict[str, Any]:
         """
         Compare face on document portrait with live webcam capture using 

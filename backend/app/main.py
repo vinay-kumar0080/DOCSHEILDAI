@@ -14,7 +14,15 @@ from app.api.routes import (
     auth, domains, screenings, analysis, reports, face, analytics, health,
     notifications, settings as settings_route
 )
-from database.seed.seed_data import seed_database
+try:
+    from database.seed.seed_data import seed_database
+except ImportError:
+    import sys
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+    try:
+        from database.seed.seed_data import seed_database
+    except ImportError:
+        def seed_database(): pass
 
 # Create tables and run safe column migrations
 Base.metadata.create_all(bind=engine)

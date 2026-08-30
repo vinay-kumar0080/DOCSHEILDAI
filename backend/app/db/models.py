@@ -44,6 +44,10 @@ class ScreeningSession(Base):
     risk_level = Column(String(50), default="UNABLE_TO_DETERMINE")  # LOW_RISK, REVIEW_RECOMMENDED, HIGH_RISK, UNABLE_TO_DETERMINE
     manual_review_required = Column(Boolean, default=False)
     is_demo = Column(Boolean, default=False)
+    quality_result = Column(JSON, nullable=True)
+    classification_result = Column(JSON, nullable=True)
+    consistency_result = Column(JSON, nullable=True)
+    individual_analyses = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
 

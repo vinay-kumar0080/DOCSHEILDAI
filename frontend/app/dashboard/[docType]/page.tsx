@@ -80,15 +80,22 @@ export default function DocumentScannerPage() {
     setActiveSlot(slot);
     setCameraError(null);
     setErrorMsg(null);
-    stopCamera();
+    setMode('camera');
+    setCameraActive(true);
 
     if (!navigator?.mediaDevices?.getUserMedia) {
-      setCameraError('Camera API is not supported in this browser. Please upload from your device.');
+      setCameraError('Camera is not available in this browser. Please upload from your device.');
       setMode('upload');
+      setCameraActive(false);
       return;
     }
 
     try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1920, min: 1280 },
@@ -99,8 +106,6 @@ export default function DocumentScannerPage() {
       });
 
       streamRef.current = stream;
-      setMode('camera');
-      setCameraActive(true);
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -385,7 +390,13 @@ export default function DocumentScannerPage() {
                 /* LIVE CAMERA VIEW */
                 <div className="relative min-h-[380px] rounded-2xl border-2 border-cyan-500/40 bg-black overflow-hidden flex flex-col items-center justify-center shadow-2xl">
                   <video
-                    ref={videoRef}
+                    ref={(el) => {
+                      videoRef.current = el;
+                      if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                        el.srcObject = streamRef.current;
+                        el.play().catch(() => {});
+                      }
+                    }}
                     autoPlay
                     playsInline
                     muted

@@ -45,6 +45,14 @@ def ensure_schema_migrations():
                 conn.execute(text("ALTER TABLE screening_sessions ADD COLUMN person_name VARCHAR(255) DEFAULT 'Screening Subject'"))
             if "travel_reference" not in existing_cols:
                 conn.execute(text("ALTER TABLE screening_sessions ADD COLUMN travel_reference JSON"))
+            if "quality_result" not in existing_cols:
+                conn.execute(text("ALTER TABLE screening_sessions ADD COLUMN quality_result JSON"))
+            if "classification_result" not in existing_cols:
+                conn.execute(text("ALTER TABLE screening_sessions ADD COLUMN classification_result JSON"))
+            if "consistency_result" not in existing_cols:
+                conn.execute(text("ALTER TABLE screening_sessions ADD COLUMN consistency_result JSON"))
+            if "individual_analyses" not in existing_cols:
+                conn.execute(text("ALTER TABLE screening_sessions ADD COLUMN individual_analyses JSON"))
             conn.commit()
         except Exception:
             pass

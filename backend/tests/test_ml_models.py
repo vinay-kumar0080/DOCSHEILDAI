@@ -1,4 +1,5 @@
 import os
+import tempfile
 import cv2
 import numpy as np
 import pytest
@@ -12,7 +13,9 @@ def test_yunet_and_sface_models():
     assert face_engine.recognizer is not None
 
     # Test on blank image: should correctly return 0 faces
-    blank_img_path = "backend/app/ai/weights/test_blank.jpg"
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tf:
+        blank_img_path = tf.name
+    
     canvas = np.zeros((300, 300, 3), dtype=np.uint8)
     cv2.imwrite(blank_img_path, canvas)
     
@@ -40,10 +43,11 @@ def test_real_mrz_td3_checker():
     assert "checksums" in res
 
 def test_tampering_forensics_pipeline():
+    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tf:
+        test_img_path = tf.name
+
     canvas = np.zeros((300, 400, 3), dtype=np.uint8)
     cv2.rectangle(canvas, (50, 50), (200, 200), (255, 255, 255), -1)
-    
-    test_img_path = "backend/app/ai/weights/test_tamper.jpg"
     cv2.imwrite(test_img_path, canvas)
     
     res = tampering_engine.analyze(test_img_path)

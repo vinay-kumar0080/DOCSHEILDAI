@@ -167,6 +167,10 @@ class ScreeningDetailResponse(BaseModel):
     tampering_result: Optional[TamperingResponse] = None
     face_result: Optional[FaceVerificationResponse] = None
     risk_assessment: Optional[RiskAssessmentResponse] = None
+    quality_result: Optional[Dict[str, Any]] = None
+    classification_result: Optional[Dict[str, Any]] = None
+    consistency_result: Optional[Dict[str, Any]] = None
+    individual_analyses: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True

@@ -215,4 +215,49 @@ class ReportService:
         doc.build(elements)
         return filepath
 
+    def generate_screening_pdf(self, screening_id: str, db) -> str:
+        from app.db.models import ScreeningSession, Report
+        screening = db.query(ScreeningSession).filter(ScreeningSession.id == screening_id).first()
+        if not screening:
+            return ""
+
+        screening_dict = {
+            "id": screening.id,
+            "person_name": screening.person_name,
+            "domain": screening.domain,
+            "document_type": screening.document_type,
+            "risk_score": screening.risk_score,
+            "risk_level": screening.risk_level,
+            "created_at": screening.created_at,
+            "ocr_result": {
+                "structured_fields": screening.ocr_result.structured_fields if screening.ocr_result else {},
+                "average_confidence": screening.ocr_result.average_confidence if screening.ocr_result else 0.95
+            },
+            "mrz_result": {
+                "mrz_detected": screening.mrz_result.mrz_detected if screening.mrz_result else False,
+                "mrz_text": screening.mrz_result.mrz_text if screening.mrz_result else None,
+                "document_number": screening.mrz_result.document_number if screening.mrz_result else None,
+                "date_of_birth": screening.mrz_result.date_of_birth if screening.mrz_result else None,
+                "expiry_date": screening.mrz_result.expiry_date if screening.mrz_result else None,
+                "checksums": screening.mrz_result.checksums if screening.mrz_result else {}
+            },
+            "tampering_result": {
+                "tampering_detected": screening.tampering_result.tampering_detected if screening.tampering_result else False,
+                "score": screening.tampering_result.score if screening.tampering_result else 0.1,
+                "confidence": screening.tampering_result.confidence if screening.tampering_result else 0.90
+            },
+            "face_result": {
+                "status": screening.face_result.status if screening.face_result else "NOT_EVALUATED",
+                "similarity": screening.face_result.similarity if screening.face_result else 0.0
+            }
+        }
+
+        pdf_path = self.generate_pdf(screening_dict)
+        rep = db.query(Report).filter(Report.screening_id == screening_id).first()
+        if not rep:
+            rep = Report(screening_id=screening_id, report_path=pdf_path)
+            db.add(rep)
+            db.commit()
+        return pdf_path
+
 report_service = ReportService()

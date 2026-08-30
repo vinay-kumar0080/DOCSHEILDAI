@@ -27,6 +27,7 @@ docshield.db
 storage/uploads/*
 storage/reports/*
 storage/heatmaps/*
+backend/storage/
 !storage/uploads/.gitkeep
 !storage/reports/.gitkeep
 !storage/heatmaps/.gitkeep

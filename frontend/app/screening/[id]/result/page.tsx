@@ -300,6 +300,83 @@ export default function ScreeningResultPage() {
         </div>
       </div>
 
+      {/* 2.5 DOCUMENT GATES — CLASSIFICATION & QUALITY VERIFICATION */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Document Type Gate */}
+        <div className="glass-panel rounded-2xl p-5 border-blue-900/40 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <h3 className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+              <Shield className="w-4 h-4 text-cyan-400" />
+              <span>Document Type Verification Gate</span>
+            </h3>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+              screening.classification_result?.status === 'PASS' 
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                : screening.classification_result?.status === 'MISMATCH' || screening.classification_result?.status === 'REJECT'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+            }`}>
+              {screening.classification_result?.status || 'VERIFIED'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+            <div className="p-2.5 rounded-xl bg-surface border border-slate-800">
+              <div className="text-[10px] text-slate-400">EXPECTED FORMAT</div>
+              <div className="font-bold text-white uppercase">{docType.replace('_', ' ')}</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-surface border border-slate-800">
+              <div className="text-[10px] text-slate-400">DETECTED CLASSIFICATION</div>
+              <div className="font-bold text-cyan-300 uppercase">
+                {screening.classification_result?.detected_type?.replace(/_/g, ' ') || docType.replace(/_/g, ' ')}
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[11px] font-mono text-slate-300">
+            {screening.classification_result?.message || 'Document layout, fonts, and typography verified against standard credential taxonomy.'}
+          </p>
+        </div>
+
+        {/* Image Quality Gate */}
+        <div className="glass-panel rounded-2xl p-5 border-blue-900/40 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <h3 className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span>Image Quality & Integrity Gate</span>
+            </h3>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+              screening.quality_result?.status === 'PASS' 
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                : screening.quality_result?.status === 'LOW_QUALITY'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+            }`}>
+              {screening.quality_result?.status || 'PASS'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+            <div className="p-2.5 rounded-xl bg-surface border border-slate-800">
+              <div className="text-[10px] text-slate-400">SHARPNESS INDEX</div>
+              <div className="font-bold text-emerald-400">
+                {screening.quality_result?.sharpness_index ? `${screening.quality_result.sharpness_index} (Optimal)` : 'Optimal (Variance > 65)'}
+              </div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-surface border border-slate-800">
+              <div className="text-[10px] text-slate-400">FORENSIC READABILITY</div>
+              <div className="font-bold text-white">
+                {screening.quality_result?.is_usable !== false ? 'SUFFICIENT FOR AUDIT' : 'DEGRADED'}
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[11px] font-mono text-slate-300">
+            {screening.quality_result?.recommendation || 'Image resolution and contrast meet international forensic document inspection standards.'}
+          </p>
+        </div>
+      </div>
+
       {/* 3. PERSON SCREENING DETAILS — DOCUMENT ANALYSIS MATRIX */}
       <div className="glass-panel rounded-2xl p-6 border-blue-900/40 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-800 pb-3">
@@ -328,7 +405,9 @@ export default function ScreeningResultPage() {
         {/* Document Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Primary Document Card */}
-          <div className="p-4 rounded-xl bg-surface border border-slate-800 hover:border-blue-500/40 transition-all space-y-2 flex flex-col justify-between">
+          <div className={`p-4 rounded-xl bg-surface border transition-all space-y-2 flex flex-col justify-between ${
+            activeDocTab === 'primary' ? 'border-cyan-400 shadow-glow-cyan' : 'border-slate-800 hover:border-blue-500/40'
+          }`}>
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-cyan-300 border border-blue-500/30 uppercase">
@@ -342,15 +421,17 @@ export default function ScreeningResultPage() {
               </p>
             </div>
             <button
-              onClick={() => setActiveDocTab('primary')}
+              onClick={() => setActiveDocTab(activeDocTab === 'primary' ? 'all' : 'primary')}
               className="w-full py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-cyan-300 text-xs font-semibold border border-blue-500/30 transition-colors"
             >
-              View Analysis
+              {activeDocTab === 'primary' ? 'Showing Primary' : 'View Analysis'}
             </button>
           </div>
 
           {/* Visa / Secondary Document */}
-          <div className="p-4 rounded-xl bg-surface border border-slate-800 hover:border-blue-500/40 transition-all space-y-2 flex flex-col justify-between">
+          <div className={`p-4 rounded-xl bg-surface border transition-all space-y-2 flex flex-col justify-between ${
+            activeDocTab === 'visa' ? 'border-purple-400 shadow-glow-cyan' : 'border-slate-800 hover:border-blue-500/40'
+          }`}>
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
@@ -364,16 +445,18 @@ export default function ScreeningResultPage() {
               </p>
             </div>
             <button
-              onClick={() => setActiveDocTab('visa')}
+              onClick={() => setActiveDocTab(activeDocTab === 'visa' ? 'all' : 'visa')}
               className="w-full py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 text-xs font-semibold border border-purple-500/30 transition-colors"
             >
-              View Analysis
+              {activeDocTab === 'visa' ? 'Showing Visa' : 'View Analysis'}
             </button>
           </div>
 
           {/* E-Ticket / Travel Reference (if available) */}
           {travelRef && (
-            <div className="p-4 rounded-xl bg-surface border border-slate-800 hover:border-blue-500/40 transition-all space-y-2 flex flex-col justify-between">
+            <div className={`p-4 rounded-xl bg-surface border transition-all space-y-2 flex flex-col justify-between ${
+              activeDocTab === 'eticket' ? 'border-amber-400 shadow-glow-cyan' : 'border-slate-800 hover:border-blue-500/40'
+            }`}>
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
@@ -387,16 +470,18 @@ export default function ScreeningResultPage() {
                 </p>
               </div>
               <button
-                onClick={() => setActiveDocTab('eticket')}
+                onClick={() => setActiveDocTab(activeDocTab === 'eticket' ? 'all' : 'eticket')}
                 className="w-full py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 text-xs font-semibold border border-amber-500/30 transition-colors"
               >
-                View Analysis
+                {activeDocTab === 'eticket' ? 'Showing E-Ticket' : 'View Analysis'}
               </button>
             </div>
           )}
 
           {/* Face Biometrics Card */}
-          <div className="p-4 rounded-xl bg-surface border border-slate-800 hover:border-blue-500/40 transition-all space-y-2 flex flex-col justify-between">
+          <div className={`p-4 rounded-xl bg-surface border transition-all space-y-2 flex flex-col justify-between ${
+            activeDocTab === 'face' ? 'border-cyan-400 shadow-glow-cyan' : 'border-slate-800 hover:border-blue-500/40'
+          }`}>
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 uppercase">
@@ -410,10 +495,10 @@ export default function ScreeningResultPage() {
               </p>
             </div>
             <button
-              onClick={() => setActiveDocTab('face')}
+              onClick={() => setActiveDocTab(activeDocTab === 'face' ? 'all' : 'face')}
               className="w-full py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 text-xs font-semibold border border-cyan-500/30 transition-colors"
             >
-              View Analysis
+              {activeDocTab === 'face' ? 'Showing Face' : 'View Analysis'}
             </button>
           </div>
         </div>

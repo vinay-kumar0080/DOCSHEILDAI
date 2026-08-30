@@ -211,6 +211,28 @@ export interface ScreeningDetail {
   tampering_result?: TamperingResult;
   face_result?: FaceResult;
   risk_assessment?: RiskAssessment;
+  quality_result?: {
+    is_usable: boolean;
+    status: string;
+    score: number;
+    sharpness_index?: number;
+    issues?: string[];
+    recommendation?: string;
+  };
+  classification_result?: {
+    expected_type: string;
+    detected_type: string;
+    confidence: number;
+    status: string;
+    message?: string;
+    cues?: string[];
+  };
+  consistency_result?: {
+    is_consistent: boolean;
+    discrepancies?: Array<{ field: string; message: string }>;
+    summary?: string;
+  };
+  individual_analyses?: Record<string, any>;
 }
 
 export type ScreeningResult = ScreeningDetail;
