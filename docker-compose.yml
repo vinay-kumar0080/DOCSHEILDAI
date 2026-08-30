@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: docshield-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PROJECT_NAME=DocShield AI
+      - VERSION=1.0.0
+      - API_V1_STR=/api/v1
+      - DATABASE_URL=sqlite:///./docshield.db
+      - UPLOAD_DIR=./storage/uploads
+      - REPORT_DIR=./storage/reports
+      - HEATMAP_DIR=./storage/heatmaps
+    volumes:
+      - docshield-storage:/app/storage
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
+        - NEXT_PUBLIC_APP_NAME=DocShield AI
+    container_name: docshield-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  docshield-storage:
