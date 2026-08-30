@@ -1,0 +1,218 @@
+import os
+import html
+from datetime import datetime
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from app.core.config import settings
+
+class ReportService:
+    def generate_pdf(self, screening_data: dict) -> str:
+        screening_id = screening_data.get("id", "UNKNOWN")
+        filename = f"DocShield_Report_{screening_id[:8]}_{datetime.utcnow().strftime('%Y%m%d%H%M')}.pdf"
+        filepath = os.path.join(settings.REPORT_DIR, filename)
+
+        doc = SimpleDocTemplate(
+            filepath,
+            pagesize=letter,
+            rightMargin=36,
+            leftMargin=36,
+            topMargin=36,
+            bottomMargin=36
+        )
+
+        styles = getSampleStyleSheet()
+        
+        title_style = ParagraphStyle(
+            'DocTitle',
+            parent=styles['Heading1'],
+            fontName='Helvetica-Bold',
+            fontSize=18,
+            textColor=colors.HexColor('#0F172A'),
+            spaceAfter=2
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'DocSubtitle',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=9,
+            textColor=colors.HexColor('#475569'),
+            spaceAfter=10
+        )
+
+        section_title_style = ParagraphStyle(
+            'SectionTitle',
+            parent=styles['Heading2'],
+            fontName='Helvetica-Bold',
+            fontSize=10,
+            textColor=colors.HexColor('#1E293B'),
+            spaceBefore=6,
+            spaceAfter=4
+        )
+
+        header_cell_style = ParagraphStyle(
+            'HeaderCell',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=8,
+            textColor=colors.white
+        )
+
+        cell_style = ParagraphStyle(
+            'BodyCell',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=8,
+            textColor=colors.HexColor('#1E293B')
+        )
+
+        elements = []
+
+        # 1. Header Banner
+        elements.append(Paragraph("DOCSHIELD AI", title_style))
+        elements.append(Paragraph("Identity Screening & Document Forensic Report", subtitle_style))
+        elements.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor('#2563EB'), spaceAfter=10))
+
+        # 2. Executive Metadata
+        person_name = html.escape(str(screening_data.get('person_name') or 'Screening Subject'))
+        meta_data = [
+            [
+                Paragraph("<b>Screening Subject:</b>", cell_style), Paragraph(f"<b>{person_name}</b>", cell_style),
+                Paragraph("<b>Date/Time:</b>", cell_style), Paragraph(datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"), cell_style)
+            ],
+            [
+                Paragraph("<b>Screening Reference:</b>", cell_style), Paragraph(f"DS-{str(screening_id)[:8].upper()}", cell_style),
+                Paragraph("<b>Operational Domain:</b>", cell_style), Paragraph(str(screening_data.get('domain', '')).upper().replace('_', ' '), cell_style)
+            ],
+            [
+                Paragraph("<b>Overall Assessment:</b>", cell_style), Paragraph(f"<b>{screening_data.get('risk_level', 'UNSPECIFIED')}</b>", cell_style),
+                Paragraph("<b>Explainable Score:</b>", cell_style), Paragraph(f"<b>{int(screening_data.get('risk_score', 0))} / 100</b>", cell_style)
+            ]
+        ]
+
+        meta_table = Table(meta_data, colWidths=[110, 160, 110, 160])
+        meta_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F8FAFC')),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#CBD5E1')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E2E8F0')),
+            ('PADDING', (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(meta_table)
+        elements.append(Spacer(1, 10))
+
+        # 3. 1. Extracted Identity Information
+        ocr_res = screening_data.get("ocr_result", {}) or {}
+        fields = ocr_res.get("structured_fields", {}) or {}
+        
+        elements.append(Paragraph("<b>1. Extracted Information & OCR</b>", section_title_style))
+        field_rows = [[Paragraph("Field Name", header_cell_style), Paragraph("Extracted Value", header_cell_style), Paragraph("Confidence", header_cell_style)]]
+        if fields:
+            for k, v in fields.items():
+                field_rows.append([
+                    Paragraph(k.replace('_', ' ').title(), cell_style),
+                    Paragraph(str(v), cell_style),
+                    Paragraph(f"{int(ocr_res.get('average_confidence', 0.95)*100)}%", cell_style)
+                ])
+        else:
+            field_rows.append([Paragraph("No text fields isolated", cell_style), Paragraph("-", cell_style), Paragraph("-", cell_style)])
+
+        field_table = Table(field_rows, colWidths=[160, 260, 120])
+        field_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E293B')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8FAFC')]),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#CBD5E1')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E2E8F0')),
+            ('PADDING', (0, 0), (-1, -1), 3.5),
+        ]))
+        elements.append(field_table)
+        elements.append(Spacer(1, 10))
+
+        mrz_res = screening_data.get("mrz_result", {}) or {}
+        chk = mrz_res.get("checksums", {}) or {}
+        elements.append(Paragraph("<b>2. Machine Readable Zone (MRZ) & Checksum Verification</b>", section_title_style))
+        
+        raw_mrz_sample = mrz_res.get("mrz_text", "N/A") or "No MRZ lines"
+        safe_mrz_display = html.escape(raw_mrz_sample.replace('\n', ' | ')[:40])
+
+        mrz_rows = [
+            [Paragraph("Element", header_cell_style), Paragraph("Validation Status", header_cell_style), Paragraph("Checksum Output", header_cell_style)],
+            [Paragraph("MRZ Detected", cell_style), Paragraph("YES" if mrz_res.get("mrz_detected") else "NO", cell_style), Paragraph(safe_mrz_display, cell_style)],
+            [Paragraph("Document Number Checksum", cell_style), Paragraph("PASS" if chk.get("document_number") else "FAIL/N/A", cell_style), Paragraph(f"Doc: {html.escape(str(mrz_res.get('document_number', '-')))}", cell_style)],
+            [Paragraph("Date of Birth Checksum", cell_style), Paragraph("PASS" if chk.get("date_of_birth") else "FAIL/N/A", cell_style), Paragraph(f"DOB: {html.escape(str(mrz_res.get('date_of_birth', '-')))}", cell_style)],
+            [Paragraph("Expiry Date Checksum", cell_style), Paragraph("PASS" if chk.get("expiry_date") else "FAIL/N/A", cell_style), Paragraph(f"EXP: {html.escape(str(mrz_res.get('expiry_date', '-')))}", cell_style)],
+            [Paragraph("Composite Checksum", cell_style), Paragraph("PASS" if chk.get("composite") else "FAIL/N/A", cell_style), Paragraph("Mathematical modulo-10 validation", cell_style)]
+        ]
+        mrz_table = Table(mrz_rows, colWidths=[180, 110, 250])
+        mrz_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E293B')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8FAFC')]),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#CBD5E1')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E2E8F0')),
+            ('PADDING', (0, 0), (-1, -1), 3.5),
+        ]))
+        elements.append(mrz_table)
+        elements.append(Spacer(1, 10))
+
+        # 5. Tampering & Biometrics Summary
+        tamp_res = screening_data.get("tampering_result", {}) or {}
+        face_res = screening_data.get("face_result", {}) or {}
+        
+        elements.append(Paragraph("<b>3. Tampering Analysis & Face Verification</b>", section_title_style))
+        forensic_rows = [
+            [Paragraph("Module", header_cell_style), Paragraph("Signal Assessment", header_cell_style), Paragraph("Metrics", header_cell_style)],
+            [
+                Paragraph("Error Level Analysis (ELA) & FFT", cell_style),
+                Paragraph("Potential Anomaly" if tamp_res.get("tampering_detected") else "Low Anomaly Signal", cell_style),
+                Paragraph(f"Score: {tamp_res.get('score', 0.1)} | Confidence: {int(tamp_res.get('confidence', 0.9)*100)}%", cell_style)
+            ],
+            [
+                Paragraph("Biometric Face Verification", cell_style),
+                Paragraph(str(face_res.get("status", "NOT_EVALUATED")), cell_style),
+                Paragraph(f"Similarity: {int(face_res.get('similarity', 0)*100)}%", cell_style)
+            ]
+        ]
+        forensic_table = Table(forensic_rows, colWidths=[180, 180, 180])
+        forensic_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E293B')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8FAFC')]),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#CBD5E1')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E2E8F0')),
+            ('PADDING', (0, 0), (-1, -1), 3.5),
+        ]))
+        elements.append(forensic_table)
+        elements.append(Spacer(1, 10))
+
+        # 6. Recommended Action & Mandatory Disclaimer
+        elements.append(Paragraph("<b>4. Recommended Operational Action</b>", section_title_style))
+        rec_text = (
+            "Refer to authorized personnel for manual verification." 
+            if screening_data.get('risk_level') in ['HIGH_RISK', 'REVIEW_RECOMMENDED'] 
+            else "Low anomaly signal — Standard verification procedures sufficient."
+        )
+        elements.append(Paragraph(f"<b>Decision Support:</b> {rec_text}", cell_style))
+        elements.append(Spacer(1, 10))
+
+        elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#94A3B8'), spaceAfter=6))
+        disclaimer_style = ParagraphStyle(
+            'Disclaimer',
+            parent=styles['Normal'],
+            fontName='Helvetica-Oblique',
+            fontSize=7,
+            textColor=colors.HexColor('#64748B'),
+            leading=9
+        )
+        disclaimer_text = (
+            "<b>MANDATORY SCREENING NOTICE:</b> The screening subject name is an operator-provided reference and is not "
+            "independently verified. This report contains AI-assisted screening signals and does not independently establish "
+            "document authenticity or identity. Final verification must be performed by authorized personnel using applicable "
+            "official procedures and authoritative databases."
+        )
+        elements.append(Paragraph(disclaimer_text, disclaimer_style))
+
+        # Build PDF
+        doc.build(elements)
+        return filepath
+
+report_service = ReportService()
