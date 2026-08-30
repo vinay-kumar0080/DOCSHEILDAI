@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: docshield
+  labels:
+    name: docshield
+    app.kubernetes.io/name: docshield-ai
+    app.kubernetes.io/part-of: docshield-suite

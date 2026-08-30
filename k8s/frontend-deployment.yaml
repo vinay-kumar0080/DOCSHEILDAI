@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docshield-frontend
+  namespace: docshield
+  labels:
+    app: docshield-frontend
+    app.kubernetes.io/name: docshield-frontend
+    app.kubernetes.io/component: web-frontend
+    app.kubernetes.io/part-of: docshield-suite
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: docshield-frontend
+  template:
+    metadata:
+      labels:
+        app: docshield-frontend
+        app.kubernetes.io/name: docshield-frontend
+        app.kubernetes.io/component: web-frontend
+    spec:
+      containers:
+        - name: docshield-frontend
+          image: docshield-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: docshield-config
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3

@@ -1,0 +1,52 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docshield-ingress
+  namespace: docshield
+  labels:
+    app.kubernetes.io/name: docshield-ingress
+    app.kubernetes.io/part-of: docshield-suite
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: "25m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "180"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "180"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+    - http:
+        paths:
+          # Backend API routes
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: docshield-backend-svc
+                port:
+                  number: 8000
+
+          # OpenAPI & Interactive Documentation
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: docshield-backend-svc
+                port:
+                  number: 8000
+
+          - path: /openapi.json
+            pathType: Exact
+            backend:
+              service:
+                name: docshield-backend-svc
+                port:
+                  number: 8000
+
+          # Frontend Next.js root and page routes
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: docshield-frontend-svc
+                port:
+                  number: 3000

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: docshield-frontend-svc
+  namespace: docshield
+  labels:
+    app: docshield-frontend
+    app.kubernetes.io/name: docshield-frontend
+    app.kubernetes.io/component: web-frontend
+    app.kubernetes.io/part-of: docshield-suite
+spec:
+  type: ClusterIP
+  selector:
+    app: docshield-frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP

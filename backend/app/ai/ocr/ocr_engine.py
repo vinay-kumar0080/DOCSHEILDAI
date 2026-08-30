@@ -153,15 +153,11 @@ class OCREngine:
             pass
         return boxes
 
-    def _parse_structured_fields(self, extracted_lines: List[str], doc_type: str, w: int, h: int) -> Tuple[str, Dict[str, Any], float]:
-        fields: Dict[str, Any] = {}
-        raw_text_joined = "\n".join(extracted_lines)
-
-        # Regex extractors
-        if extracted_lines and len(extracted_lines) >= 2:
+        # If text was recognized, parse demographic fields
+        if extracted_lines and len(extracted_lines) >= 1:
             for line in extracted_lines:
                 # Passport / ID number pattern
-                num_match = re.search(r'\b([A-Z0-9]{8,10})\b', line)
+                num_match = re.search(r'\b([A-Z0-9]{7,10})\b', line)
                 if num_match and "document_number" not in fields:
                     fields["document_number"] = num_match.group(1)
 
@@ -170,96 +166,14 @@ class OCREngine:
                 if date_match and "expiry_date" not in fields:
                     fields["expiry_date"] = date_match.group(1)
 
-        # Ensure structured fields appropriate to document type
-        if doc_type == "passport":
-            fields.setdefault("name", "ALEXANDER CHEN")
-            fields.setdefault("document_number", "P89234561")
-            fields.setdefault("nationality", "USA")
-            fields.setdefault("date_of_birth", "1992-05-14")
-            fields.setdefault("gender", "M")
-            fields.setdefault("expiry_date", "2031-08-20")
-            fields.setdefault("issuing_country", "USA")
-            fields.setdefault("issue_date", "2021-08-21")
-            default_lines = [
-                "PASSPORT / PASSEPORT",
-                "UNITED STATES OF AMERICA",
-                "Type: P  Code: USA  Passport No: P89234561",
-                "Surname: CHEN",
-                "Given Names: ALEXANDER",
-                "Nationality: UNITED STATES OF AMERICA",
-                "Date of birth: 14 MAY 1992",
-                "Sex: M  Place of birth: CALIFORNIA, U.S.A.",
-                "Date of issue: 21 AUG 2021",
-                "Date of expiration: 20 AUG 2031",
-                "Authority: United States Department of State",
-                "P<USACHEN<<ALEXANDER<<<<<<<<<<<<<<<<<<<<<<<<",
-                "P892345617USA9205148M3108204<<<<<<<<<<<<<<02"
-            ]
-        elif doc_type == "visa":
-            fields.setdefault("name", "MARIA GONZALEZ")
-            fields.setdefault("document_number", "V4490182")
-            fields.setdefault("passport_number", "E9812450")
-            fields.setdefault("visa_type", "B1/B2 TOURIST/BUSINESS")
-            fields.setdefault("date_of_birth", "1988-11-03")
-            fields.setdefault("issuing_post", "MADRID")
-            fields.setdefault("issue_date", "2023-01-10")
-            fields.setdefault("expiry_date", "2028-01-10")
-            fields.setdefault("entries", "MULTIPLE")
-            default_lines = [
-                "UNITED STATES OF AMERICA VISA",
-                "Control Number: 20230104820",
-                "Visa Type / Class: B1/B2",
-                "Name: GONZALEZ, MARIA",
-                "Passport Number: E9812450",
-                "Visa Number: V4490182",
-                "Nationality: ESP",
-                "Date of Birth: 03 NOV 1988",
-                "Issue Date: 10 JAN 2023",
-                "Expiration Date: 10 JAN 2028",
-                "Entries: M",
-                "VNUSAGONZALEZ<<MARIA<<<<<<<<<<<<<<<<<<<<<<<<",
-                "V4490182<5ESP8811031F2801103<<<<<<<<<<<<<<00"
-            ]
-        elif doc_type == "boarding_pass":
-            fields.setdefault("name", "ALEXANDER CHEN")
-            fields.setdefault("flight_number", "UA892")
-            fields.setdefault("carrier", "UNITED AIRLINES")
-            fields.setdefault("origin", "SFO")
-            fields.setdefault("destination", "LHR")
-            fields.setdefault("boarding_date", "2026-09-15")
-            fields.setdefault("gate", "G92")
-            fields.setdefault("seat", "14B")
-            fields.setdefault("pnr_reference", "K9X4PL")
-            fields.setdefault("sequence", "042")
-            default_lines = [
-                "BOARDING PASS / PASSAGER",
-                "NAME: CHEN / ALEXANDER",
-                "FLIGHT: UA 892  DATE: 15SEP26",
-                "FROM: SAN FRANCISCO INTL (SFO)",
-                "TO: LONDON HEATHROW (LHR)",
-                "GATE: G92  BOARDING: 18:45  SEAT: 14B",
-                "PNR: K9X4PL  SEQ: 042  CLASS: Y",
-                "M1CHEN/ALEXANDER       EK9X4PL SFOLHRUA 0892 258Y014B0042 100"
-            ]
-        else:
-            fields.setdefault("name", "ELENA ROSTOVA")
-            fields.setdefault("document_number", "ID-8819024")
-            fields.setdefault("date_of_birth", "1995-12-08")
-            fields.setdefault("nationality", "FRA")
-            fields.setdefault("expiry_date", "2030-12-08")
-            fields.setdefault("issuing_authority", "PREFECTURE DE POLICE")
-            default_lines = [
-                "NATIONAL IDENTITY CARD",
-                "ID NO: ID-8819024",
-                "SURNAME: ROSTOVA",
-                "NAME: ELENA",
-                "DATE OF BIRTH: 08.12.1995",
-                "NATIONALITY: FRA",
-                "VALID UNTIL: 08.12.2030"
-            ]
+                # Name pattern heuristic
+                if any(kw in line.upper() for kw in ["NAME", "SURNAME", "GIVEN"]):
+                    parts = line.split(":")
+                    if len(parts) > 1 and len(parts[1].strip()) > 2:
+                        fields["name"] = parts[1].strip()
 
-        raw_text = raw_text_joined if raw_text_joined.strip() else "\n".join(default_lines)
-        avg_conf = 0.96
+        raw_text = raw_text_joined.strip()
+        avg_conf = 0.94 if raw_text else 0.0
         return raw_text, fields, avg_conf
 
 ocr_engine = OCREngine()
