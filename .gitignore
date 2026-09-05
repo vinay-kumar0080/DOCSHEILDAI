@@ -30,6 +30,15 @@ storage/heatmaps/*
 !storage/uploads/.gitkeep
 !storage/reports/.gitkeep
 !storage/heatmaps/.gitkeep
+backend/storage/uploads/*
+backend/storage/reports/*
+backend/storage/heatmaps/*
+!backend/storage/uploads/.gitkeep
+!backend/storage/reports/.gitkeep
+!backend/storage/heatmaps/.gitkeep
+backend/scratch/*
+backend/mrz_test_crop.png
+backend/ocr_mrz_search.txt
 
 # Environment Variables (Keep examples)
 .env

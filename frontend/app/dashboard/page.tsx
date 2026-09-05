@@ -60,36 +60,36 @@ export default function HomePage() {
 
   const domains = [
     {
-      id: 'airline',
-      name: 'Airlines',
-      code: 'AIR-BOARDING',
-      desc: 'Passenger travel document, e-ticket, and boarding authorization verification.',
-      icon: Building2,
-      badge: 'Passenger & Check-in',
-      gradient: 'from-purple-950/40 via-purple-900/20 to-surface',
-      border: 'border-purple-500/40 hover:border-purple-400',
-      glow: 'hover:shadow-glow-purple',
-      iconColor: 'text-purple-400',
-      href: '/screening/start/airline'
-    },
-    {
-      id: 'immigration',
-      name: 'Immigration & Border Control',
-      code: 'IMM-BORDER',
-      desc: 'Perform comprehensive identity and travel-document screening for border entry and residency verification.',
+      id: 'immigration_officers',
+      name: 'Immigration Officers',
+      code: 'IMM-OFFICER',
+      desc: 'Screen passports, visas, residence permits, work permits, and national ID cards.',
       icon: ShieldCheck,
-      badge: 'Border Entry Control',
+      badge: 'Border Control & Customs',
       gradient: 'from-cyan-950/40 via-cyan-900/20 to-surface',
       border: 'border-cyan-500/40 hover:border-cyan-400',
       glow: 'hover:shadow-glow-cyan',
       iconColor: 'text-cyan-400',
-      href: '/screening/start/immigration'
+      href: '/screening/start/immigration_officers'
+    },
+    {
+      id: 'border_security',
+      name: 'Border-Security Personnel',
+      code: 'BOR-SECURITY',
+      desc: 'Verify cross-border travel credentials, visas, national IDs, and border permits.',
+      icon: Shield,
+      badge: 'Border Checkpoint',
+      gradient: 'from-emerald-950/40 via-emerald-900/20 to-surface',
+      border: 'border-emerald-500/40 hover:border-emerald-400',
+      glow: 'hover:shadow-glow-cyan',
+      iconColor: 'text-emerald-400',
+      href: '/screening/start/border_security'
     },
     {
       id: 'airport_security',
       name: 'Airport Security Authorities',
       code: 'ASA-TERMINAL',
-      desc: 'Screen passenger identity and travel documents for potential fraud, manipulation, and identity inconsistencies.',
+      desc: 'Screen passenger identity documents, boarding passes, visas, and e-tickets.',
       icon: Plane,
       badge: 'Terminal Checkpoint',
       gradient: 'from-blue-950/40 via-blue-900/20 to-surface',
@@ -99,17 +99,30 @@ export default function HomePage() {
       href: '/screening/start/airport_security'
     },
     {
-      id: 'border_travel',
-      name: 'Border & Travel Screening',
-      code: 'BOR-TRAVEL',
-      desc: 'Screen cross-border travel documents, visas, and permits with multi-modal forensic inspection.',
-      icon: Shield,
-      badge: 'Cross-Border Checkpoint',
-      gradient: 'from-emerald-950/40 via-emerald-900/20 to-surface',
-      border: 'border-emerald-500/40 hover:border-emerald-400',
-      glow: 'hover:shadow-glow-cyan',
-      iconColor: 'text-emerald-400',
-      href: '/screening/start/border_travel'
+      id: 'immigration_departments',
+      name: 'Immigration Departments',
+      code: 'IMM-DEPT',
+      desc: 'Screen visa applications, residence permits, work authorizations, and dossiers.',
+      icon: Building2,
+      badge: 'Departmental Screening',
+      gradient: 'from-purple-950/40 via-purple-900/20 to-surface',
+      border: 'border-purple-500/40 hover:border-purple-400',
+      glow: 'hover:shadow-glow-purple',
+      iconColor: 'text-purple-400',
+      href: '/screening/start/immigration_departments'
+    },
+    {
+      id: 'law_enforcement',
+      name: 'Law-Enforcement Agencies',
+      code: 'LEA-PATROL',
+      desc: 'Screen national IDs, driving licences, passports, and travel credentials.',
+      icon: ShieldCheck,
+      badge: 'Law Enforcement Command',
+      gradient: 'from-indigo-950/40 via-indigo-900/20 to-surface',
+      border: 'border-indigo-500/40 hover:border-indigo-400',
+      glow: 'hover:shadow-glow-blue',
+      iconColor: 'text-indigo-400',
+      href: '/screening/start/law_enforcement'
     }
   ];
 

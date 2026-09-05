@@ -25,7 +25,8 @@ class ImageQualityAnalyzer:
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
             # 1. Resolution Check
-            is_low_res = (w < 640 or h < 480) or total_pixels < (640 * 480)
+            is_critically_low_res = (w < 350 or h < 250) or total_pixels < (350 * 250)
+            is_suboptimal_res = (w < 640 or h < 400) or total_pixels < (640 * 400)
             is_optimal_res = (w >= 1280 and h >= 720) or total_pixels >= (1280 * 720)
 
             # 2. Blur detection via Laplacian Variance
@@ -43,50 +44,58 @@ class ImageQualityAnalyzer:
 
             # 4. Glare hotspot detection (pixels > 248)
             glare_pixels = int(np.sum(gray > 248))
-            glare_ratio = float(glare_pixels / total_pixels)
-            has_severe_glare = glare_ratio > 0.12
-            has_moderate_glare = 0.05 < glare_ratio <= 0.12
+            glare_ratio = float(glare_pixels / max(1, total_pixels))
+            has_severe_glare = glare_ratio > 0.15
+            has_moderate_glare = 0.06 < glare_ratio <= 0.15
 
             # 5. Edge / Structure Density (Canny)
             edges = cv2.Canny(gray, 50, 150)
-            edge_density = float(np.sum(edges > 0) / total_pixels)
-            is_blank_or_textureless = edge_density < 0.005
+            edge_density = float(np.sum(edges > 0) / max(1, total_pixels))
+            is_blank_or_textureless = edge_density < 0.003
 
             # Quality Assessment
             issues: List[str] = []
             score = 100.0
 
-            if is_low_res:
-                issues.append(f"Image resolution too low ({w}x{h}). Minimum 640x480 required.")
-                score -= 35.0
+            if is_critically_low_res:
+                issues.append(f"Image resolution critically low ({w}x{h}). Minimum 400x300 required.")
+                score -= 45.0
+            elif is_suboptimal_res:
+                issues.append(f"Image resolution below optimal standard ({w}x{h}).")
+                score -= 15.0
+
             if is_severely_blurry:
-                issues.append(f"Severe motion blur / out of focus (sharpness index: {int(laplacian_var)}).")
+                issues.append(f"Severe motion blur / out of focus (sharpness variance: {int(laplacian_var)}).")
                 score -= 40.0
             elif is_moderately_blurry:
-                issues.append("Moderate softness detected; text may be difficult to resolve.")
+                issues.append("Moderate softness detected; fine text may be degraded.")
                 score -= 15.0
+
             if is_too_dark:
                 issues.append("Severe underexposure / lighting too dim.")
                 score -= 30.0
             elif is_too_bright:
                 issues.append("Severe overexposure / washed out lighting.")
                 score -= 30.0
+
             if is_low_contrast:
-                issues.append("Low contrast between text and background.")
+                issues.append("Low contrast between text and document background.")
                 score -= 20.0
+
             if has_severe_glare:
-                issues.append(f"Severe specular reflection / glare hotspot covering {int(glare_ratio*100)}% of surface.")
+                issues.append(f"Severe specular reflection / glare covering {int(glare_ratio*100)}% of surface.")
                 score -= 25.0
             elif has_moderate_glare:
                 issues.append("Moderate surface glare detected.")
                 score -= 10.0
+
             if is_blank_or_textureless:
                 issues.append("Image appears almost blank or lacks document structure.")
                 score -= 50.0
 
             score = max(0.0, min(100.0, score))
 
-            if score < 40.0 or is_severely_blurry or is_low_res or is_blank_or_textureless:
+            if score < 40.0 or is_severely_blurry or is_critically_low_res or is_blank_or_textureless:
                 status = "UNACCEPTABLE"
                 is_usable = False
                 recommendation = "Capture quality is insufficient for forensic screening. Please retake the document with the full card/page flat, in bright lighting, without glare."

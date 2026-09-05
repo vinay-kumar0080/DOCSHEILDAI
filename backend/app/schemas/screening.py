@@ -171,6 +171,9 @@ class ScreeningDetailResponse(BaseModel):
     classification_result: Optional[Dict[str, Any]] = None
     consistency_result: Optional[Dict[str, Any]] = None
     individual_analyses: Optional[Dict[str, Any]] = None
+    documents_requiring_recheck: Optional[List[Dict[str, Any]]] = None
+    documents_with_no_issues: Optional[List[str]] = None
+    next_checkpoint_notes: Optional[List[str]] = None
 
     class Config:
         from_attributes = True

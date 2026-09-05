@@ -1,38 +1,15 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from app.core.domains_config import CANONICAL_DOMAINS, get_domain_config
 
 router = APIRouter(tags=["Domains & Document Types"])
 
 @router.get("/domains")
 def get_domains():
-    return [
-        {
-            "id": "airport_security",
-            "name": "Airport Security Authorities",
-            "code": "ASA",
-            "description": "Screen passengers, identity documents, boarding passes, and travel credentials.",
-            "icon": "Plane",
-            "color": "from-blue-600/30 to-cyan-500/20",
-            "badge": "Aviation Security Tier 1"
-        },
-        {
-            "id": "airline",
-            "name": "Airlines & Gate Agents",
-            "code": "AIR",
-            "description": "Verify passenger travel documents, visas, and identity consistency before boarding.",
-            "icon": "Building2",
-            "color": "from-purple-600/30 to-indigo-500/20",
-            "badge": "Pre-Boarding Verification"
-        },
-        {
-            "id": "immigration",
-            "name": "Immigration Officers",
-            "code": "IMM",
-            "description": "Perform AI-assisted border control, biometric identity comparison, and forensic screening.",
-            "icon": "ShieldCheck",
-            "color": "from-cyan-600/30 to-blue-500/20",
-            "badge": "Border Control & Customs"
-        }
-    ]
+    return CANONICAL_DOMAINS
+
+@router.get("/domains/{domain_id}")
+def get_domain(domain_id: str):
+    return get_domain_config(domain_id)
 
 @router.get("/documents/types")
 def get_document_types():
@@ -56,8 +33,26 @@ def get_document_types():
             "badge": "Consular Foil"
         },
         {
+            "id": "boarding_pass",
+            "name": "Boarding Pass",
+            "category": "Flight Credential",
+            "description": "Verify passenger name, flight number, routing, seat, and barcode/text alignment.",
+            "icon": "Navigation",
+            "has_mrz": False,
+            "badge": "IATA BCBP"
+        },
+        {
+            "id": "eticket",
+            "name": "E-Ticket",
+            "category": "Travel Booking Reference",
+            "description": "Verify passenger name, booking reference (PNR), flight, origin, destination, and travel dates.",
+            "icon": "Ticket",
+            "has_mrz": False,
+            "badge": "Reservation Record"
+        },
+        {
             "id": "national_id",
-            "name": "National ID Card",
+            "name": "National Identity Card",
             "category": "Identity Card",
             "description": "Verify identity credentials, card layout geometry, date of birth consistency, and microprint noise.",
             "icon": "CreditCard",
@@ -65,40 +60,49 @@ def get_document_types():
             "badge": "ISO/IEC 7810 ID-1"
         },
         {
+            "id": "residence_permit",
+            "name": "Residence Permit",
+            "category": "Immigration",
+            "description": "Validate resident status permits, biometrics zone, issuing authority, and validity dates.",
+            "icon": "Award",
+            "has_mrz": True,
+            "badge": "Resident Card"
+        },
+        {
+            "id": "work_permit",
+            "name": "Work Permit",
+            "category": "Employment Authorization",
+            "description": "Verify employment authorization permits, validity windows, and issuing authorities.",
+            "icon": "FileText",
+            "has_mrz": False,
+            "badge": "Employment Auth"
+        },
+        {
+            "id": "travel_authorization",
+            "name": "Travel Authorization",
+            "category": "Travel Clearance",
+            "description": "Screen ESTA/ETA pre-clearance certificates, border authorizations, and transit permits.",
+            "icon": "CheckCircle2",
+            "has_mrz": False,
+            "badge": "Pre-Clearance"
+        },
+        {
             "id": "driving_license",
             "name": "Driving License",
             "category": "Permit",
             "description": "Extract license classes, endorsements, expiration terms, and inspect photo tampering.",
-            "icon": "Award",
+            "icon": "Car",
             "has_mrz": False,
             "badge": "Motor Vehicle Registry"
         },
         {
-            "id": "residence_permit",
-            "name": "Residence Permit",
-            "category": "Immigration",
-            "description": "Validate resident status permits, biometrics zone, and tamper-resistant security background.",
-            "icon": "FileText",
-            "has_mrz": True,
-            "badge": "Biometric Resident Card"
-        },
-        {
             "id": "travel_permit",
             "name": "Travel Permit",
-            "category": "Travel Document",
+            "category": "Special Document",
             "description": "Screen emergency travel documents, refugee certificates, and border transit papers.",
             "icon": "Navigation",
             "has_mrz": False,
             "badge": "Transit Authority"
-        },
-        {
-            "id": "other",
-            "name": "Other Identity Document",
-            "category": "General",
-            "description": "General optical character recognition, image forensics, and tamper risk inspection.",
-            "icon": "Files",
-            "has_mrz": False,
-            "badge": "General Credential"
         },
         {
             "id": "face_verification",

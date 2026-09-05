@@ -27,7 +27,8 @@ import {
   ShieldCheck,
   Ticket,
   User,
-  Shield
+  Shield,
+  ClipboardList
 } from 'lucide-react';
 import { api } from '../../../../lib/api';
 import { ScreeningResult, RiskLevel } from '../../../../types';
@@ -300,6 +301,102 @@ export default function ScreeningResultPage() {
         </div>
       </div>
 
+      {/* 2.3 NEXT CHECKPOINT VERIFICATION NOTES & HANDOVER INSTRUCTIONS */}
+      <div className="glass-panel rounded-2xl p-6 border-cyan-900/50 bg-gradient-to-br from-blue-950/40 via-surface to-surface space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider">
+              Next Checkpoint Verification Notes & Handover Instructions
+            </h2>
+          </div>
+          <span className="text-[10px] font-mono px-2.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
+            OFFICIAL HANDOVER
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Documents Requiring Recheck */}
+          <div className="p-4 rounded-xl bg-surface/80 border border-amber-500/30 space-y-3">
+            <div className="flex items-center justify-between text-amber-400 font-mono text-xs font-bold uppercase">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Documents Requiring Recheck</span>
+              </div>
+              <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px]">
+                {screening.documents_requiring_recheck?.length || 0} Flagged
+              </span>
+            </div>
+
+            {screening.documents_requiring_recheck && screening.documents_requiring_recheck.length > 0 ? (
+              <div className="space-y-2">
+                {screening.documents_requiring_recheck.map((item, idx) => (
+                  <div key={idx} className="p-3 rounded-lg bg-amber-950/30 border border-amber-500/20 space-y-1">
+                    <div className="font-bold text-white text-xs capitalize flex items-center justify-between">
+                      <span>{item.document_type.replace(/_/g, ' ')}</span>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">ACTION REQUIRED</span>
+                    </div>
+                    <div className="text-[11px] text-amber-200">
+                      <span className="font-semibold text-slate-300">Reason: </span>{item.reason}
+                    </div>
+                    <div className="text-[11px] text-cyan-300">
+                      <span className="font-semibold text-slate-300">What to verify: </span>{item.what_to_verify}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/20 text-emerald-300 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>No documents flagged for mandatory physical re-inspection.</span>
+              </div>
+            )}
+          </div>
+
+          {/* Documents With No Issues Detected */}
+          <div className="p-4 rounded-xl bg-surface/80 border border-emerald-500/30 space-y-3">
+            <div className="flex items-center justify-between text-emerald-400 font-mono text-xs font-bold uppercase">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Documents with No Issues Detected</span>
+              </div>
+              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px]">
+                {screening.documents_with_no_issues?.length || 0} Cleared
+              </span>
+            </div>
+
+            {screening.documents_with_no_issues && screening.documents_with_no_issues.length > 0 ? (
+              <div className="space-y-1.5">
+                {screening.documents_with_no_issues.map((docName, idx) => (
+                  <div key={idx} className="p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-500/20 text-xs font-mono text-emerald-300 flex items-center justify-between">
+                    <span className="capitalize">{docName.replace(/_/g, ' ')}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">PASSED GATES ✓</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-400 text-xs">
+                All presented credentials require secondary inspection or re-examination.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Checkpoint Handover Notes */}
+        {screening.next_checkpoint_notes && screening.next_checkpoint_notes.length > 0 && (
+          <div className="p-3.5 rounded-xl bg-blue-950/30 border border-blue-500/30 space-y-1.5">
+            <div className="text-[10px] font-mono text-cyan-300 uppercase font-bold tracking-wider">
+              INSTRUCTIONS FOR NEXT CHECKPOINT OFFICER:
+            </div>
+            <ul className="space-y-1 text-xs text-slate-200 list-disc list-inside">
+              {screening.next_checkpoint_notes.map((note, idx) => (
+                <li key={idx} className="text-slate-300">{note}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
       {/* 2.5 DOCUMENT GATES — CLASSIFICATION & QUALITY VERIFICATION */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Document Type Gate */}
@@ -402,105 +499,83 @@ export default function ScreeningResultPage() {
           </div>
         </div>
 
-        {/* Document Cards Grid */}
+        {/* Dynamic Presented Documents Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Primary Document Card */}
-          <div className={`p-4 rounded-xl bg-surface border transition-all space-y-2 flex flex-col justify-between ${
-            activeDocTab === 'primary' ? 'border-cyan-400 shadow-glow-cyan' : 'border-slate-800 hover:border-blue-500/40'
-          }`}>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-cyan-300 border border-blue-500/30 uppercase">
-                  Primary
-                </span>
-                <span className="text-[10px] font-mono text-emerald-400 font-bold">ANALYZED ✓</span>
-              </div>
-              <div className="font-bold text-white text-sm capitalize">{docType.replace('_', ' ')}</div>
-              <p className="text-[11px] text-slate-400">
-                {rawFields.document_number ? `Doc: ${String(rawFields.document_number).slice(0, 2)}******${String(rawFields.document_number).slice(-2)}` : 'Identity credential'}
-              </p>
-            </div>
-            <button
-              onClick={() => setActiveDocTab(activeDocTab === 'primary' ? 'all' : 'primary')}
-              className="w-full py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-cyan-300 text-xs font-semibold border border-blue-500/30 transition-colors"
-            >
-              {activeDocTab === 'primary' ? 'Showing Primary' : 'View Analysis'}
-            </button>
-          </div>
+          {(() => {
+            const rawKeys = screening.individual_analyses 
+              ? Object.keys(screening.individual_analyses).filter(k => !k.startsWith('_') && k !== 'live_selfie')
+              : [screening.document_type || 'passport'];
+            const docList = rawKeys.length > 0 ? rawKeys : [screening.document_type || 'passport'];
 
-          {/* Visa / Secondary Document */}
-          <div className={`p-4 rounded-xl bg-surface border transition-all space-y-2 flex flex-col justify-between ${
-            activeDocTab === 'visa' ? 'border-purple-400 shadow-glow-cyan' : 'border-slate-800 hover:border-blue-500/40'
-          }`}>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
-                  Travel Credential
-                </span>
-                <span className="text-[10px] font-mono text-emerald-400 font-bold">ANALYZED ✓</span>
-              </div>
-              <div className="font-bold text-white text-sm">Entry Visa</div>
-              <p className="text-[11px] text-slate-400">
-                Valid authorization for domain territory.
-              </p>
-            </div>
-            <button
-              onClick={() => setActiveDocTab(activeDocTab === 'visa' ? 'all' : 'visa')}
-              className="w-full py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 text-xs font-semibold border border-purple-500/30 transition-colors"
-            >
-              {activeDocTab === 'visa' ? 'Showing Visa' : 'View Analysis'}
-            </button>
-          </div>
+            return docList.map((docKey: string, idx: number) => {
+              const analysis = screening.individual_analyses?.[docKey];
+              const cfg = DOCUMENT_CONFIGS[docKey] || {
+                name: docKey.replace(/_/g, ' '),
+                category: 'Identity Credential',
+                badge: 'Audited'
+              };
+              const dRisk = analysis?.risk_level || screening.risk_level || 'UNABLE_TO_DETERMINE';
+              const docNum = analysis?.ocr_result?.structured_fields?.document_number || rawFields.document_number;
 
-          {/* E-Ticket / Travel Reference (if available) */}
-          {travelRef && (
+              return (
+                <div
+                  key={docKey}
+                  className={`p-4 rounded-xl bg-surface border transition-all space-y-2 flex flex-col justify-between ${
+                    activeDocTab === docKey ? 'border-cyan-400 shadow-glow-cyan' : 'border-slate-800 hover:border-blue-500/40'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-cyan-300 border border-blue-500/30 uppercase">
+                        {idx === 0 ? 'Primary' : 'Supporting'}
+                      </span>
+                      <span className={`text-[10px] font-mono font-bold ${
+                        dRisk === 'LOW_RISK' ? 'text-emerald-400' : dRisk === 'HIGH_RISK' ? 'text-rose-400' : 'text-amber-400'
+                      }`}>
+                        {dRisk.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div className="font-bold text-white text-sm capitalize">{cfg.name}</div>
+                    <p className="text-[11px] text-slate-400">
+                      {docNum ? `Doc: ${String(docNum).slice(0, 2)}******${String(docNum).slice(-2)}` : cfg.category}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveDocTab(activeDocTab === docKey ? 'all' : docKey)}
+                    className="w-full py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-cyan-300 text-xs font-semibold border border-blue-500/30 transition-colors"
+                  >
+                    {activeDocTab === docKey ? 'Selected' : 'View Analysis'}
+                  </button>
+                </div>
+              );
+            });
+          })()}
+
+          {/* Face Biometrics Card (if evaluated) */}
+          {faceResult && faceResult.status !== 'NOT_EVALUATED' && (
             <div className={`p-4 rounded-xl bg-surface border transition-all space-y-2 flex flex-col justify-between ${
-              activeDocTab === 'eticket' ? 'border-amber-400 shadow-glow-cyan' : 'border-slate-800 hover:border-blue-500/40'
+              activeDocTab === 'face' ? 'border-cyan-400 shadow-glow-cyan' : 'border-slate-800 hover:border-blue-500/40'
             }`}>
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase">
-                    Reference
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 uppercase">
+                    Biometrics
                   </span>
-                  <span className="text-[10px] font-mono text-slate-400">METADATA</span>
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold">1:1 MATCH</span>
                 </div>
-                <div className="font-bold text-white text-sm">E-Ticket / PNR</div>
-                <p className="text-[11px] text-slate-400 font-mono">
-                  {travelRef.pnr ? `PNR: ${travelRef.pnr}` : 'Booking reference'}
+                <div className="font-bold text-white text-sm">Face Verification</div>
+                <p className="text-[11px] text-slate-400">
+                  {faceResult?.status === 'MATCH_SIGNAL' ? 'Correspondence Verified' : 'Facial Correlation'}
                 </p>
               </div>
               <button
-                onClick={() => setActiveDocTab(activeDocTab === 'eticket' ? 'all' : 'eticket')}
-                className="w-full py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 text-xs font-semibold border border-amber-500/30 transition-colors"
+                onClick={() => setActiveDocTab(activeDocTab === 'face' ? 'all' : 'face')}
+                className="w-full py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 text-xs font-semibold border border-cyan-500/30 transition-colors"
               >
-                {activeDocTab === 'eticket' ? 'Showing E-Ticket' : 'View Analysis'}
+                {activeDocTab === 'face' ? 'Showing Face' : 'View Analysis'}
               </button>
             </div>
           )}
-
-          {/* Face Biometrics Card */}
-          <div className={`p-4 rounded-xl bg-surface border transition-all space-y-2 flex flex-col justify-between ${
-            activeDocTab === 'face' ? 'border-cyan-400 shadow-glow-cyan' : 'border-slate-800 hover:border-blue-500/40'
-          }`}>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 uppercase">
-                  Biometrics
-                </span>
-                <span className="text-[10px] font-mono text-emerald-400 font-bold">1:1 MATCH</span>
-              </div>
-              <div className="font-bold text-white text-sm">Face Verification</div>
-              <p className="text-[11px] text-slate-400">
-                {faceResult?.status === 'MATCH_SIGNAL' ? 'Strong Correspondence' : 'Visual correlation'}
-              </p>
-            </div>
-            <button
-              onClick={() => setActiveDocTab(activeDocTab === 'face' ? 'all' : 'face')}
-              className="w-full py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 text-xs font-semibold border border-cyan-500/30 transition-colors"
-            >
-              {activeDocTab === 'face' ? 'Showing Face' : 'View Analysis'}
-            </button>
-          </div>
         </div>
       </div>
 
@@ -824,6 +899,17 @@ export default function ScreeningResultPage() {
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
+      </div>
+
+      {/* Mandatory Official Disclaimer */}
+      <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+        <div className="font-bold text-slate-300 font-mono text-[10px] uppercase">
+          IMPORTANT NOTICE & OFFICIAL DISCLAIMER
+        </div>
+        <p>
+          This report is an AI-assisted screening assessment. It is not an official certification of document authenticity.
+          Final verification must be performed by authorized personnel.
+        </p>
       </div>
 
       {/* Heatmap Modal */}

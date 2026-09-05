@@ -1,4 +1,12 @@
-export type DomainId = 'airport_security' | 'airline' | 'immigration' | 'border_travel';
+export type DomainId = 
+  | 'immigration_officers'
+  | 'border_security'
+  | 'airport_security'
+  | 'immigration_departments'
+  | 'law_enforcement'
+  | 'airline'
+  | 'immigration'
+  | 'border_travel';
 
 export interface DomainInfo {
   id: DomainId;
@@ -16,6 +24,8 @@ export type DocumentTypeId =
   | 'national_id'
   | 'driving_license'
   | 'residence_permit'
+  | 'work_permit'
+  | 'travel_authorization'
   | 'travel_permit'
   | 'boarding_pass'
   | 'eticket'
@@ -233,6 +243,9 @@ export interface ScreeningDetail {
     summary?: string;
   };
   individual_analyses?: Record<string, any>;
+  documents_requiring_recheck?: Array<{ document_type: string; reason: string; what_to_verify: string }>;
+  documents_with_no_issues?: string[];
+  next_checkpoint_notes?: string[];
 }
 
 export type ScreeningResult = ScreeningDetail;

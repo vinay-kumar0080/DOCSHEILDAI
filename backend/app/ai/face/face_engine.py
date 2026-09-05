@@ -1,3 +1,4 @@
+import base64
 import os
 import cv2
 import numpy as np
@@ -98,10 +99,18 @@ class FaceEngine:
 
     def detect_faces(self, image_path: str) -> Dict[str, Any]:
         count, bbox, crop, _ = self.detect_face(image_path)
+        crop_b64 = None
+        if crop is not None and crop.size > 0:
+            try:
+                _, buffer = cv2.imencode('.jpg', crop, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                crop_b64 = base64.b64encode(buffer).decode('utf-8')
+            except Exception:
+                pass
         return {
             "face_detected": count > 0,
             "face_count": count,
             "bounding_box": bbox,
+            "face_crop_base64": crop_b64,
             "status": "DETECTED" if count > 0 else "NO_FACE"
         }
 

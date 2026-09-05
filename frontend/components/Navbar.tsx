@@ -84,10 +84,11 @@ export default function Navbar() {
   }
 
   const domainOptions = [
+    { id: 'immigration_officers', label: 'Immigration Officers', icon: ShieldCheck, color: 'text-cyan-400' },
+    { id: 'border_security', label: 'Border Security', icon: Shield, color: 'text-emerald-400' },
     { id: 'airport_security', label: 'Airport Security', icon: Plane, color: 'text-blue-400' },
-    { id: 'airline', label: 'Airlines & Gate', icon: Building2, color: 'text-purple-400' },
-    { id: 'immigration', label: 'Immigration & Border', icon: ShieldCheck, color: 'text-cyan-400' },
-    { id: 'border_travel', label: 'Border & Travel', icon: Shield, color: 'text-emerald-400' }
+    { id: 'immigration_departments', label: 'Immigration Depts', icon: Building2, color: 'text-purple-400' },
+    { id: 'law_enforcement', label: 'Law Enforcement', icon: ShieldCheck, color: 'text-indigo-400' }
   ];
 
   return (

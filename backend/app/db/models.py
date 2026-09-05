@@ -48,6 +48,9 @@ class ScreeningSession(Base):
     classification_result = Column(JSON, nullable=True)
     consistency_result = Column(JSON, nullable=True)
     individual_analyses = Column(JSON, nullable=True)
+    documents_requiring_recheck = Column(JSON, nullable=True)
+    documents_with_no_issues = Column(JSON, nullable=True)
+    next_checkpoint_notes = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
 

@@ -7,12 +7,17 @@ class DocumentClassifier:
     def __init__(self):
         self.loaded = True
 
-    def classify(self, image_path: str, expected_type: str = "passport", raw_ocr_text: str = "") -> Dict[str, Any]:
+    def classify(self, image_path: str = "", expected_type: str = "passport", raw_ocr_text: str = "") -> Dict[str, Any]:
         """
         Classify document visual structure, layout, and textual content signals.
         Evaluates whether the image matches the expected document type or is a non-document / mismatch.
         """
         try:
+            # Handle case where raw text is provided directly or in first argument
+            if not raw_ocr_text and image_path and (" " in image_path or not any(image_path.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp', '.tiff', '.bmp', '.pdf'])):
+                raw_ocr_text = image_path
+                image_path = ""
+
             text = raw_ocr_text.strip() if raw_ocr_text else ""
             text_upper = text.upper()
             cues: List[str] = []
@@ -95,20 +100,34 @@ class DocumentClassifier:
                 cues.append("Driver licensing authority cues detected")
 
             # 7. Residence / Work Permit Signals
-            permit_score = 0.0
-            if any(k in text_upper for k in ["RESIDENCE PERMIT", "WORK PERMIT", "TITRE DE SEJOUR", "EMPLOYMENT AUTHORIZATION", "PERMANENT RESIDENT"]):
-                permit_score += 0.70
-                cues.append("Immigration residence/work permit title detected")
+            residence_permit_score = 0.0
+            if any(k in text_upper for k in ["RESIDENCE PERMIT", "TITRE DE SEJOUR", "PERMANENT RESIDENT", "AUFENTHALTSTITEL"]):
+                residence_permit_score += 0.70
+                cues.append("Immigration residence permit title detected")
+
+            work_permit_score = 0.0
+            if any(k in text_upper for k in ["WORK PERMIT", "EMPLOYMENT AUTHORIZATION", "WORK AUTHORIZATION", "LABOUR CARD"]):
+                work_permit_score += 0.70
+                cues.append("Employment authorization / work permit title detected")
+
+            # 8. Travel Authorization / Travel Permit Signals
+            travel_auth_score = 0.0
+            if any(k in text_upper for k in ["TRAVEL AUTHORIZATION", "TRAVEL PERMIT", "BORDER AUTHORIZATION", "EMERGENCY TRAVEL", "REFUGEE TRAVEL", "ESTA", "ETA"]):
+                travel_auth_score += 0.70
+                cues.append("Travel authorization or border permit cues detected")
 
             # Collate scores
             scores = {
                 "passport": passport_score,
                 "visa": visa_score,
-                "eticket": eticket_score,
                 "boarding_pass": boarding_pass_score,
+                "eticket": eticket_score,
                 "national_id": national_id_score,
                 "driving_license": driving_license_score,
-                "residence_permit": permit_score
+                "residence_permit": residence_permit_score,
+                "work_permit": work_permit_score,
+                "travel_authorization": travel_auth_score,
+                "travel_permit": travel_auth_score
             }
 
             best_type = max(scores, key=scores.get)
@@ -131,6 +150,21 @@ class DocumentClassifier:
             norm_expected = expected_type.lower().replace(" ", "_").replace("-", "_")
             norm_detected = detected_type.lower().replace(" ", "_").replace("-", "_")
 
+            # Normalization aliases
+            alias_groups = [
+                {"travel_authorization", "travel_permit", "border_travel_authorization", "border_authorization"},
+                {"driving_license", "driving_licence"},
+                {"national_id", "national_identity_card", "citizen_id"},
+                {"eticket", "e_ticket", "itinerary"},
+                {"residence_permit", "work_permit"}
+            ]
+
+            is_alias_match = False
+            for grp in alias_groups:
+                if norm_expected in grp and norm_detected in grp:
+                    is_alias_match = True
+                    break
+
             # Flexible pairing (e.g. passport vs eticket)
             if norm_detected == "non_document_object":
                 status = "REJECT"
@@ -138,7 +172,7 @@ class DocumentClassifier:
             elif norm_detected == "unknown_document":
                 status = "MANUAL_REVIEW"
                 message = f"Document type could not be verified automatically against expected {expected_type.upper()} specification."
-            elif norm_expected == norm_detected or (norm_expected in ["primary_document", "document"]):
+            elif norm_expected == norm_detected or is_alias_match or (norm_expected in ["primary_document", "document", "travel_document"]):
                 status = "PASS"
                 message = f"Document layout and textual markers successfully verified as {expected_type.upper()}."
             else:

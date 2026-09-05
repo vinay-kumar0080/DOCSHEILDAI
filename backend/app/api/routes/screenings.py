@@ -10,12 +10,16 @@ from app.schemas.screening import (
 )
 from app.services.storage_service import storage_service
 from app.services.screening_service import screening_service
+from app.core.domains_config import validate_domain_and_document
 
 router = APIRouter(prefix="/screenings", tags=["Screenings"])
 
 @router.post("", response_model=ScreeningStatusResponse)
 def create_screening(data: ScreeningCreate, db: Session = Depends(get_db)):
-    # 1. Resolve Officer Profile
+    # 1. Server-side validation of Domain & Document preset
+    validate_domain_and_document(data.domain, data.document_type)
+
+    # 2. Resolve Officer Profile
     user = None
     if data.user_id:
         user = db.query(Profile).filter(Profile.id == data.user_id).first()
@@ -29,7 +33,7 @@ def create_screening(data: ScreeningCreate, db: Session = Depends(get_db)):
 
     person_name = (data.person_name or "Screening Subject").strip()
 
-    # 2. Create Screening Session with unique internal UUID
+    # 3. Create Screening Session with unique internal UUID
     screening = ScreeningSession(
         person_name=person_name,
         travel_reference=data.travel_reference,
@@ -55,6 +59,10 @@ def upload_document(
     screening = db.query(ScreeningSession).filter(ScreeningSession.id == screening_id).first()
     if not screening:
         raise HTTPException(status_code=404, detail="Screening session not found")
+
+    # Validate uploaded document role against screening domain
+    if doc_role not in ["primary_document", "secondary_document", "live_selfie", "face_verification"]:
+        validate_domain_and_document(screening.domain, doc_role)
 
     saved_path = storage_service.save_upload_file(file, screening_id)
     file_size = os.path.getsize(saved_path)

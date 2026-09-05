@@ -53,6 +53,12 @@ def ensure_schema_migrations():
                 conn.execute(text("ALTER TABLE screening_sessions ADD COLUMN consistency_result JSON"))
             if "individual_analyses" not in existing_cols:
                 conn.execute(text("ALTER TABLE screening_sessions ADD COLUMN individual_analyses JSON"))
+            if "documents_requiring_recheck" not in existing_cols:
+                conn.execute(text("ALTER TABLE screening_sessions ADD COLUMN documents_requiring_recheck JSON"))
+            if "documents_with_no_issues" not in existing_cols:
+                conn.execute(text("ALTER TABLE screening_sessions ADD COLUMN documents_with_no_issues JSON"))
+            if "next_checkpoint_notes" not in existing_cols:
+                conn.execute(text("ALTER TABLE screening_sessions ADD COLUMN next_checkpoint_notes JSON"))
             conn.commit()
         except Exception:
             pass

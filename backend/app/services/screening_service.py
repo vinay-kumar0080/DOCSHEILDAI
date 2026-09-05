@@ -66,7 +66,7 @@ class ScreeningService:
             individual_analyses: Dict[str, Any] = {}
 
             # =========================================================================
-            # PROCESS EACH DOCUMENT INDIVIDUALLY
+            # PROCESS EACH DOCUMENT INDIVIDUALLY WITH DOCUMENT-SPECIFIC PIPELINES
             # =========================================================================
             for doc in all_docs:
                 file_path = doc.storage_path
@@ -87,6 +87,10 @@ class ScreeningService:
                     inferred_type = "passport"
                 elif "visa" in doc.original_filename.lower():
                     inferred_type = "visa"
+                elif "permit" in doc.original_filename.lower():
+                    inferred_type = "residence_permit"
+                elif "license" in doc.original_filename.lower() or "licence" in doc.original_filename.lower():
+                    inferred_type = "driving_license"
 
                 # If live selfie, run facial detection & quality
                 if doc.doc_role == "live_selfie" or inferred_type == "live_selfie":
@@ -98,6 +102,8 @@ class ScreeningService:
                         "storage_path": file_path,
                         "quality": qual,
                         "face_detection": face_detect,
+                        "risk_score": 10.0 if face_detect.get("face_detected") else 50.0,
+                        "risk_level": "LOW_RISK" if face_detect.get("face_detected") else "REVIEW_RECOMMENDED",
                         "status": "COMPLETED"
                     }
                     continue
@@ -117,8 +123,8 @@ class ScreeningService:
 
                 # D. MRZ Validation (if Passport/Visa or MRZ characters detected)
                 mrz_out = {"mrz_detected": False, "is_valid": False, "confidence": 0.0}
-                if inferred_type in ["passport", "visa"] or "P<" in ocr_out.get("raw_text", "") or "V<" in ocr_out.get("raw_text", ""):
-                    mrz_out = mrz_engine.parse_and_validate(ocr_out.get("raw_text", ""), ocr_out.get("structured_fields", {}))
+                if inferred_type in ["passport", "visa", "national_id", "residence_permit"] or "P<" in ocr_out.get("raw_text", "") or "V<" in ocr_out.get("raw_text", ""):
+                    mrz_out = mrz_engine.detect_and_validate(image_path=file_path, raw_text=ocr_out.get("raw_text", ""), structured_fields=ocr_out.get("structured_fields", {}))
 
                 # E. Tampering Forensics
                 tamper_out = tampering_engine.analyze(file_path, is_tampered_simulation=is_simulated_tamper)
@@ -128,6 +134,19 @@ class ScreeningService:
 
                 # G. Document Validations
                 doc_validations = self._run_deterministic_validations(ocr_out.get("structured_fields", {}), mrz_out)
+
+                # H. Document-Level Risk Assessment
+                doc_risk = risk_engine.evaluate(
+                    document_type=inferred_type,
+                    quality_res=qual,
+                    classification_res=class_out,
+                    ocr_res=ocr_out,
+                    mrz_res=mrz_out,
+                    validation_items=doc_validations,
+                    tampering_res=tamper_out,
+                    face_res={"status": "DOCUMENT_PORTRAIT_VERIFIED" if doc_face_detect.get("face_detected") else "NO_FACE", "similarity": 0.0},
+                    consistency_res={"is_consistent": True, "items": []}
+                )
 
                 # Save individual analysis entry
                 individual_analyses[inferred_type] = {
@@ -141,6 +160,9 @@ class ScreeningService:
                     "tampering": tamper_out,
                     "face_detection": doc_face_detect,
                     "validation_items": doc_validations,
+                    "risk_score": doc_risk.get("risk_score", 0.0),
+                    "risk_level": doc_risk.get("risk_level", "UNABLE_TO_DETERMINE"),
+                    "recommendation": doc_risk.get("recommendation", "Standard procedure"),
                     "status": "COMPLETED"
                 }
 
@@ -253,7 +275,7 @@ class ScreeningService:
             # Stage: Cross-Document Consistency Evaluation
             screening.stage = "consistency"
             db.commit()
-            sec_analysis = individual_analyses.get("visa") or individual_analyses.get("secondary_document") or individual_analyses.get("eticket")
+            sec_analysis = individual_analyses.get("visa") or individual_analyses.get("secondary_document") or individual_analyses.get("eticket") or individual_analyses.get("boarding_pass")
             sec_fields = sec_analysis.get("ocr", {}).get("structured_fields", {}) if sec_analysis else None
             
             consistency_res = consistency_engine.evaluate_consistency(
@@ -278,12 +300,70 @@ class ScreeningService:
                 consistency_res=consistency_res
             )
 
+            # Construct Next Checkpoint Verification Notes
+            documents_requiring_recheck = []
+            documents_with_no_issues = []
+
+            for doc_name, doc_data in individual_analyses.items():
+                if doc_name == "live_selfie":
+                    continue
+                d_level = doc_data.get("risk_level", "LOW_RISK")
+                d_class = doc_data.get("classification", {}).get("status", "PASS")
+                d_tamper = doc_data.get("tampering", {}).get("tampering_detected", False)
+                d_mrz = doc_data.get("mrz", {})
+                d_val = doc_data.get("validation_items", [])
+
+                reasons = []
+                verifications = []
+
+                if d_class != "PASS":
+                    reasons.append(f"Classification status: {d_class}")
+                    verifications.append("Verify document identity and physical layout features")
+                if d_tamper:
+                    reasons.append("Potential image manipulation / tampering signals detected")
+                    verifications.append("Inspect physical security foil, microprint, and photo boundary")
+                if d_mrz.get("mrz_detected") and not d_mrz.get("is_valid"):
+                    reasons.append("MRZ checksum calculation discrepancy")
+                    verifications.append("Check document number, DOB, and expiry check digits")
+                for v in d_val:
+                    if v.get("status") in ["FAIL", "WARNING"]:
+                        reasons.append(v.get("message", "Validation flag"))
+                        verifications.append(f"Re-verify {v.get('check_name')}")
+
+                if reasons or d_level in ["REVIEW_RECOMMENDED", "HIGH_RISK", "UNABLE_TO_DETERMINE"]:
+                    documents_requiring_recheck.append({
+                        "document": doc_name.replace('_', ' ').upper(),
+                        "risk_level": d_level,
+                        "reasons": reasons or ["Manual verification recommended by screening rules"],
+                        "verify": list(set(verifications)) or ["Perform full manual inspection"]
+                    })
+                else:
+                    documents_with_no_issues.append({
+                        "document": doc_name.replace('_', ' ').upper(),
+                        "status": "LOW RISK",
+                        "notes": "No significant automated anomaly detected. Normal authorized verification procedures still apply."
+                    })
+
+            next_checkpoint_notes = {
+                "documents_requiring_recheck": documents_requiring_recheck,
+                "documents_with_no_issues": documents_with_no_issues,
+                "instructions": "Focus secondary verification on the flagged documents and fields listed above. Documents with no automated signals must still undergo standard authorized inspection."
+            }
+
+            # Add next checkpoint notes to individual_analyses
+            individual_analyses["_next_checkpoint_notes"] = next_checkpoint_notes
+
             risk_model = RiskAssessment(
                 screening_id=screening_id,
                 risk_score=risk_res.get("risk_score", 0.0),
                 risk_level=risk_res.get("risk_level", "UNABLE_TO_DETERMINE"),
                 contributors=risk_res.get("contributors", []),
-                explanation=risk_res.get("explanation", {}),
+                explanation={
+                    "summary": risk_res.get("recommendation", "Standard procedure"),
+                    "next_checkpoint_notes": next_checkpoint_notes,
+                    "passed_count": len(risk_res.get("checks_passed", [])),
+                    "failed_count": len(risk_res.get("checks_failed", []))
+                },
                 recommendation=risk_res.get("recommendation", "Standard procedure")
             )
             db.add(risk_model)
@@ -296,9 +376,24 @@ class ScreeningService:
             screening.classification_result = class_res
             screening.consistency_result = consistency_res
             screening.individual_analyses = individual_analyses
+            screening.documents_requiring_recheck = [
+                {
+                    "document_type": d["document"],
+                    "reason": "; ".join(d["reasons"]),
+                    "what_to_verify": "; ".join(d["verify"])
+                }
+                for d in documents_requiring_recheck
+            ]
+            screening.documents_with_no_issues = [d["document"] for d in documents_with_no_issues]
+            screening.next_checkpoint_notes = [
+                f"{d['document']}: {'; '.join(d['reasons'])} -> Verify: {'; '.join(d['verify'])}"
+                for d in documents_requiring_recheck
+            ] if documents_requiring_recheck else [
+                "All presented credentials passed automated screening gates. Normal authorized verification applies."
+            ]
             screening.status = "completed"
             screening.stage = "completed"
-            screening.completed_at = datetime.utcnow()
+            screening.completed_at = datetime.now(timezone.utc)
 
             # Audit Log Entry
             audit = AuditLog(

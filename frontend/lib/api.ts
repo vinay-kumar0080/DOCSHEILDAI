@@ -240,5 +240,24 @@ export const api = {
     });
     if (!res.ok) throw new Error('Direct face verification failed');
     return res.json();
-  }
+  },
+
+  // ================= NAMESPACE ALIASES FOR COMPONENT CONVENIENCE =================
+  screenings: {
+    create: async (data: { domain: string; document_type: string; person_name?: string; is_demo?: boolean; travel_reference?: any }) => {
+      return api.createScreening(data.domain, data.document_type, data.is_demo, data.person_name, data.travel_reference);
+    },
+    uploadDocument: async (screeningId: string, file: File | Blob, docRole = 'primary_document', filename = 'document.jpg') => {
+      return api.uploadDocument(screeningId, file, docRole, filename);
+    },
+    analyze: async (screeningId: string, isTampered = false) => {
+      return api.startAnalysis(screeningId, isTampered);
+    },
+    get: async (screeningId: string) => {
+      return api.getScreeningDetail(screeningId);
+    },
+    status: async (screeningId: string) => {
+      return api.getScreeningStatus(screeningId);
+    }
+  },
 };
